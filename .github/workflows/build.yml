@@ -1,0 +1,35 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack project
+        run: unzip -q -o MyTasks.zip -d src
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build
+        working-directory: src/MyTasks
+        run: gradle assembleDebug --no-daemon --stacktrace
+      - name: Copy APK
+        run: cp src/MyTasks/app/build/outputs/apk/debug/app-debug.apk MyTasks.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MyTasks-apk
+          path: MyTasks.apk
+      - name: Publish download link
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete apk -y --cleanup-tag || true
+          gh release create apk MyTasks.apk --title "MyTasks APK" --notes "Download MyTasks.apk and install it on your phone."
